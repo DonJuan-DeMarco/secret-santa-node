@@ -8,6 +8,8 @@ const Assignment = require('./models/Assignment');
 const token = process.env.BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
+const pendingWishlists = {};
+
 // Connect to MongoDB
 mongoose
 	.connect(process.env.MONGODB_URI, {
@@ -16,6 +18,92 @@ mongoose
 	})
 	.then(() => console.log('Connected to MongoDB'))
 	.catch((err) => console.error('MongoDB connection error:', err));
+
+bot.on('message', async (msg) => {
+	const userId = msg.from.id;
+	const chatId = msg.chat.id;
+
+	// Ignore messages that are commands
+	if (msg.text.startsWith('/')) {
+		return;
+	}
+
+	// If the user is not in the pending wish list state, ignore
+	const operation = pendingWishlists[userId];
+	if (!operation) {
+		return;
+	}
+
+	// Remove the user from the pending list
+	delete pendingWishlists[userId];
+
+	const wishListEntry = msg.text;
+
+	try {
+		const user = await User.findOne({ userId });
+
+		if (!user) {
+			bot.sendMessage(chatId, 'You need to register first using /start.');
+			return;
+		}
+
+		if (operation === 'append') {
+			// Append the new entry to the existing wish list
+			if (user.wishList) {
+				user.wishList += `\n${wishListEntry}`;
+			} else {
+				user.wishList = wishListEntry;
+			}
+		} else if (operation === 'rewrite') {
+			// Overwrite the existing wish list
+			user.wishList = wishListEntry;
+		}
+
+		await user.save();
+
+		bot.sendMessage(chatId, 'Your wish list has been updated.');
+
+		// Notify Secret Santa
+		const assignment = await Assignment.findOne({ recipientId: userId });
+
+		if (assignment) {
+			bot.sendMessage(
+				assignment.santaId,
+				'Your recipient has updated their wish list.'
+			);
+		}
+	} catch (err) {
+		console.error(err);
+		bot.sendMessage(
+			chatId,
+			'An error occurred while updating your wish list.'
+		);
+	}
+});
+bot.onText(/\/my_wishlist/, async (msg) => {
+	const userId = msg.from.id;
+
+	try {
+		const user = await User.findOne({ userId });
+
+		if (!user) {
+			bot.sendMessage(
+				msg.chat.id,
+				'You need to register first using /start.'
+			);
+			return;
+		}
+
+		const wishList = user.wishList || 'You have not set a wish list yet.';
+		bot.sendMessage(msg.chat.id, `Your Wish List:\n${wishList}`);
+	} catch (err) {
+		console.error(err);
+		bot.sendMessage(
+			msg.chat.id,
+			'An error occurred while retrieving your wish list.'
+		);
+	}
+});
 
 bot.onText(/\/start/, async (msg) => {
 	const userId = msg.from.id;
@@ -102,10 +190,49 @@ bot.onText(/\/wishlist (.+)/, async (msg, match) => {
 	}
 });
 
-bot.onText(/\/wishlist$/, (msg) => {
+bot.onText(/\/rewrite_wishlist$/, async (msg) => {
+	const userId = msg.from.id;
+
+	// Check if the user is registered
+	const user = await User.findOne({ userId });
+
+	if (!user) {
+		bot.sendMessage(
+			msg.chat.id,
+			'You need to register first using /start.'
+		);
+		return;
+	}
+
+	// Set the user's state to pending wish list entry with 'rewrite' operation
+	pendingWishlists[userId] = 'rewrite';
+
 	bot.sendMessage(
 		msg.chat.id,
-		'Please provide your wish list after the command.'
+		'Please send your new wish list in the next message. This will overwrite your existing wish list.'
+	);
+});
+
+bot.onText(/\/wishlist$/, async (msg) => {
+	const userId = msg.from.id;
+
+	// Check if the user is registered
+	const user = await User.findOne({ userId });
+
+	if (!user) {
+		bot.sendMessage(
+			msg.chat.id,
+			'You need to register first using /start.'
+		);
+		return;
+	}
+
+	// Set the user's state to pending wish list entry with 'append' operation
+	pendingWishlists[userId] = 'append';
+
+	bot.sendMessage(
+		msg.chat.id,
+		'Please send the wish list items you want to add in the next message.'
 	);
 });
 
@@ -215,12 +342,14 @@ bot.onText(/\/help/, (msg) => {
 	const helpMessage = `
   Welcome to the Secret Santa Bot!
   
-  Available commands:
-  /start - Register for the Secret Santa game.
-  /wishlist <your wish list> - Set or update your wish list.
-  /view_wishlist - View your recipient's wish list (after assignments).
-  /help - Show this help message.
+  Доступні команди:
+  /start - Зареєструватися у грі.
+  /wishlist <список бажань> - Створити новий список бажань.
+  /view_wishlist - Глянути список бажань рецепієнта (після розподілу).
+  /help - Показати дане повідомлення.
   /initiate_draw - Розпочати розподіл
+  /my_wishlist - Глянути власний список
+  /rewrite_wishlist - Переписати список бажань заново.
   `;
 
 	bot.sendMessage(msg.chat.id, helpMessage);
