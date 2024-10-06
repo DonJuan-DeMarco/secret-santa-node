@@ -338,17 +338,33 @@ bot.onText(/\/initiate_draw/, async (msg) => {
 	bot.sendMessage(msg.chat.id, 'Secret Santa assignments have been made!');
 });
 
+bot.setMyCommands([
+	{ command: 'start', description: 'Зареєструватися у грі.' },
+	{ command: 'help', description: 'Показати допоміжне повідомлення.' },
+	{ command: 'wishlist', description: 'Оновити існуючий список бажань.' },
+	{
+		command: 'view_wishlist',
+		description: 'Глянути список бажань рецепієнта (після розподілу).',
+	},
+	{ command: 'my_wishlist', description: 'Глянути власний список.' },
+	{
+		command: 'rewrite_wishlist',
+		description: 'Переписати список бажань заново.',
+	},
+	{ command: 'initiate_draw', description: 'Розпочати розподіл.' },
+]);
+
 bot.onText(/\/help/, (msg) => {
 	const helpMessage = `
   Welcome to the Secret Santa Bot!
   
   Доступні команди:
   /start - Зареєструватися у грі.
-  /wishlist <список бажань> - Створити новий список бажань.
+  /wishlist - Оновити список бажань.
   /view_wishlist - Глянути список бажань рецепієнта (після розподілу).
   /help - Показати дане повідомлення.
-  /initiate_draw - Розпочати розподіл
-  /my_wishlist - Глянути власний список
+  /initiate_draw - Розпочати розподіл.
+  /my_wishlist - Глянути власний список.
   /rewrite_wishlist - Переписати список бажань заново.
   `;
 
