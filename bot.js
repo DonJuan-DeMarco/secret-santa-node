@@ -8,6 +8,18 @@ const Assignment = require('./models/Assignment');
 const token = process.env.BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
+const mainMenuKeyboard = {
+	reply_markup: {
+		keyboard: [
+			[{ text: '/wishlist' }, { text: '/rewrite_wishlist' }],
+			[{ text: '/my_wishlist' }, { text: '/view_wishlist' }],
+			[{ text: '/help' }, { text: '/initiate_draw' }],
+		],
+		resize_keyboard: true,
+		one_time_keyboard: false,
+	},
+};
+
 const pendingWishlists = {};
 
 // Connect to MongoDB
@@ -43,7 +55,11 @@ bot.on('message', async (msg) => {
 		const user = await User.findOne({ userId });
 
 		if (!user) {
-			bot.sendMessage(chatId, 'You need to register first using /start.');
+			bot.sendMessage(
+				chatId,
+				'You need to register first using /start.',
+				mainMenuKeyboard
+			);
 			return;
 		}
 
@@ -61,7 +77,11 @@ bot.on('message', async (msg) => {
 
 		await user.save();
 
-		bot.sendMessage(chatId, 'Your wish list has been updated.');
+		bot.sendMessage(
+			chatId,
+			'Your wish list has been updated.',
+			mainMenuKeyboard
+		);
 
 		// Notify Secret Santa
 		const assignment = await Assignment.findOne({ recipientId: userId });
@@ -69,14 +89,16 @@ bot.on('message', async (msg) => {
 		if (assignment) {
 			bot.sendMessage(
 				assignment.santaId,
-				'Your recipient has updated their wish list.'
+				'Your recipient has updated their wish list.',
+				mainMenuKeyboard
 			);
 		}
 	} catch (err) {
 		console.error(err);
 		bot.sendMessage(
 			chatId,
-			'An error occurred while updating your wish list.'
+			'An error occurred while updating your wish list.',
+			mainMenuKeyboard
 		);
 	}
 });
@@ -89,7 +111,8 @@ bot.onText(/\/my_wishlist/, async (msg) => {
 		if (!user) {
 			bot.sendMessage(
 				msg.chat.id,
-				'You need to register first using /start.'
+				'You need to register first using /start.',
+				mainMenuKeyboard
 			);
 			return;
 		}
@@ -106,6 +129,7 @@ bot.onText(/\/my_wishlist/, async (msg) => {
 });
 
 bot.onText(/\/start/, async (msg) => {
+	const chatId = msg.chat.id;
 	const userId = msg.from.id;
 	const username = msg.from.username;
 
@@ -113,15 +137,21 @@ bot.onText(/\/start/, async (msg) => {
 		let user = await User.findOne({ userId });
 
 		if (user) {
-			bot.sendMessage(msg.chat.id, 'You are already registered!');
+			bot.sendMessage(
+				chatId,
+				'You are already registered!',
+				mainMenuKeyboard
+			);
 		} else {
 			const codeNames = [
-				'Mr. White',
-				'Mr. Orange',
-				'Mr. Blonde',
-				'Mr. Pink',
-				'Mr. Brown',
-				'Mr. Blue',
+				'Mr. White', //1
+				'Mr. Orange', //2
+				'Mr. Blonde', //3
+				'Mr. Pink', //4
+				'Mr. Brown', //5
+				'Mr. Blue', //6
+				'Mr. Gold', //7
+				'Mr. Moss', //8
 			];
 			const usedCodeNames = await User.find().distinct('codeName');
 			const availableCodeNames = codeNames.filter(
@@ -129,7 +159,11 @@ bot.onText(/\/start/, async (msg) => {
 			);
 
 			if (availableCodeNames.length === 0) {
-				bot.sendMessage(msg.chat.id, 'No more code names available.');
+				bot.sendMessage(
+					chatId,
+					'No more code names available.',
+					mainMenuKeyboard
+				);
 				return;
 			}
 
@@ -142,13 +176,18 @@ bot.onText(/\/start/, async (msg) => {
 			await user.save();
 
 			bot.sendMessage(
-				msg.chat.id,
-				`Registration successful! Your code name is ${codeName}.`
+				chatId,
+				`Registration successful! Your code name is ${codeName}.`,
+				mainMenuKeyboard
 			);
 		}
 	} catch (err) {
 		console.error(err);
-		bot.sendMessage(msg.chat.id, 'An error occurred during registration.');
+		bot.sendMessage(
+			chatId,
+			'An error occurred during registration.',
+			mainMenuKeyboard
+		);
 	}
 });
 
@@ -162,7 +201,8 @@ bot.onText(/\/wishlist (.+)/, async (msg, match) => {
 		if (!user) {
 			bot.sendMessage(
 				msg.chat.id,
-				'You need to register first using /start.'
+				'You need to register first using /start.',
+				mainMenuKeyboard
 			);
 			return;
 		}
@@ -170,7 +210,11 @@ bot.onText(/\/wishlist (.+)/, async (msg, match) => {
 		user.wishList = wishList;
 		await user.save();
 
-		bot.sendMessage(msg.chat.id, 'Your wish list has been updated.');
+		bot.sendMessage(
+			msg.chat.id,
+			'Your wish list has been updated.',
+			mainMenuKeyboard
+		);
 
 		// Notify Secret Santa
 		const assignment = await Assignment.findOne({ recipientId: userId });
@@ -178,14 +222,16 @@ bot.onText(/\/wishlist (.+)/, async (msg, match) => {
 		if (assignment) {
 			bot.sendMessage(
 				assignment.santaId,
-				'Your recipient has updated their wish list.'
+				'Your recipient has updated their wish list.',
+				mainMenuKeyboard
 			);
 		}
 	} catch (err) {
 		console.error(err);
 		bot.sendMessage(
 			msg.chat.id,
-			'An error occurred while updating your wish list.'
+			'An error occurred while updating your wish list.',
+			mainMenuKeyboard
 		);
 	}
 });
@@ -199,7 +245,8 @@ bot.onText(/\/rewrite_wishlist$/, async (msg) => {
 	if (!user) {
 		bot.sendMessage(
 			msg.chat.id,
-			'You need to register first using /start.'
+			'You need to register first using /start.',
+			mainMenuKeyboard
 		);
 		return;
 	}
@@ -209,7 +256,8 @@ bot.onText(/\/rewrite_wishlist$/, async (msg) => {
 
 	bot.sendMessage(
 		msg.chat.id,
-		'Please send your new wish list in the next message. This will overwrite your existing wish list.'
+		'Please send your new wish list in the next message. This will overwrite your existing wish list.',
+		mainMenuKeyboard
 	);
 });
 
@@ -222,7 +270,8 @@ bot.onText(/\/wishlist$/, async (msg) => {
 	if (!user) {
 		bot.sendMessage(
 			msg.chat.id,
-			'You need to register first using /start.'
+			'You need to register first using /start.',
+			mainMenuKeyboard
 		);
 		return;
 	}
@@ -232,7 +281,8 @@ bot.onText(/\/wishlist$/, async (msg) => {
 
 	bot.sendMessage(
 		msg.chat.id,
-		'Please send the wish list items you want to add in the next message.'
+		'Please send the wish list items you want to add in the next message.',
+		mainMenuKeyboard
 	);
 });
 
@@ -245,7 +295,8 @@ bot.onText(/\/view_wishlist/, async (msg) => {
 		if (!assignment) {
 			bot.sendMessage(
 				msg.chat.id,
-				'You have not been assigned a recipient yet.'
+				'You have not been assigned a recipient yet.',
+				mainMenuKeyboard
 			);
 			return;
 		}
@@ -259,16 +310,22 @@ bot.onText(/\/view_wishlist/, async (msg) => {
 			const wishList = recipient.wishList || 'No wish list yet.';
 			bot.sendMessage(
 				msg.chat.id,
-				`Recipient Code Name: ${codeName}\nWish List: ${wishList}`
+				`Recipient Code Name: ${codeName}\nWish List: ${wishList}`,
+				mainMenuKeyboard
 			);
 		} else {
-			bot.sendMessage(msg.chat.id, 'Recipient not found.');
+			bot.sendMessage(
+				msg.chat.id,
+				'Recipient not found.',
+				mainMenuKeyboard
+			);
 		}
 	} catch (err) {
 		console.error(err);
 		bot.sendMessage(
 			msg.chat.id,
-			'An error occurred while retrieving the wish list.'
+			'An error occurred while retrieving the wish list.',
+			mainMenuKeyboard
 		);
 	}
 });
@@ -315,7 +372,8 @@ async function assignSecretSantas() {
 			const codeName = recipient.codeName;
 			bot.sendMessage(
 				assignment.santaId,
-				`You are the Secret Santa for ${codeName}. Use /view_wishlist to see their wish list.`
+				`You are the Secret Santa for ${codeName}. Use /view_wishlist to see their wish list.`,
+				mainMenuKeyboard
 			);
 		}
 	} catch (err) {
@@ -329,13 +387,18 @@ bot.onText(/\/initiate_draw/, async (msg) => {
 	if (msg.from.id !== adminId) {
 		bot.sendMessage(
 			msg.chat.id,
-			`adminId:${adminId}/ msg.from.id:${msg.from.id}.\nOnly the admin can initiate the draw.`
+			`adminId:${adminId}/ msg.from.id:${msg.from.id}.\nOnly the admin can initiate the draw.`,
+			mainMenuKeyboard
 		);
 		return;
 	}
 
 	await assignSecretSantas();
-	bot.sendMessage(msg.chat.id, 'Secret Santa assignments have been made!');
+	bot.sendMessage(
+		msg.chat.id,
+		'Secret Santa assignments have been made!',
+		mainMenuKeyboard
+	);
 });
 
 bot.setMyCommands([
@@ -368,7 +431,7 @@ bot.onText(/\/help/, (msg) => {
   /rewrite_wishlist - Переписати список бажань заново.
   `;
 
-	bot.sendMessage(msg.chat.id, helpMessage);
+	bot.sendMessage(msg.chat.id, helpMessage, mainMenuKeyboard);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
