@@ -330,6 +330,86 @@ bot.onText(/\/view_wishlist/, async (msg) => {
 	}
 });
 
+bot.onText(/\/reassign_codenames/, async (msg) => {
+	const adminId = parseInt(process.env.ADMIN_ID, 10);
+
+	if (msg.from.id !== adminId) {
+		bot.sendMessage(
+			msg.chat.id,
+			'Only the admin can reassign code names.',
+			mainMenuKeyboard
+		);
+		return;
+	}
+
+	await reassignCodeNames();
+
+	bot.sendMessage(
+		msg.chat.id,
+		'Code names have been reassigned.',
+		mainMenuKeyboard
+	);
+});
+
+async function reassignCodeNames() {
+	try {
+		// Get all users
+		const users = await User.find({});
+
+		const codeNames = [
+			'Mr. White', //1
+			'Mr. Orange', //2
+			'Mr. Blonde', //3
+			'Mr. Pink', //4
+			'Mr. Brown', //5
+			'Mr. Blue', //6
+			'Mr. Gold', //7
+			'Mr. Moss', //8
+		];
+
+		if (users.length > codeNames.length) {
+			bot.sendMessage(
+				parseInt(process.env.ADMIN_ID, 10),
+				'Not enough code names to assign to all users.',
+				mainMenuKeyboard
+			);
+			return;
+		}
+
+		// Shuffle the code names
+		const shuffledCodeNames = codeNames.sort(() => Math.random() - 0.5);
+
+		// Assign code names to users
+		for (let i = 0; i < users.length; i++) {
+			users[i].codeName = shuffledCodeNames[i];
+			await users[i].save();
+		}
+
+		// Notify the admin
+		bot.sendMessage(
+			parseInt(process.env.ADMIN_ID, 10),
+			'Code names have been reassigned.',
+			mainMenuKeyboard
+		);
+
+		// Optionally, notify each user of their new code name
+		for (const user of users) {
+			bot.sendMessage(
+				user.userId,
+				`Your new code name is ${user.codeName}.`,
+				mainMenuKeyboard
+			);
+		}
+	} catch (err) {
+		console.error(err);
+		bot.sendMessage(
+			parseInt(process.env.ADMIN_ID, 10),
+			'An error occurred during code name reassignment.',
+			mainMenuKeyboard
+		);
+	}
+}
+
 async function assignSecretSantas() {
 	try {
 		const users = await User.find({});
@@ -380,6 +460,115 @@ async function assignSecretSantas() {
 		console.error(err);
 	}
 }
+async function assignSecretSantasWithConstraints() {
+	try {
+		const users = await User.find({});
+		const userIds = users.map((user) => user.userId);
+
+		// Define the prohibited pairs
+		const prohibitedPairs = [
+			[421415422, 460551035],
+			[419910057, 346110882],
+			[559986856, 600943109],
+		];
+
+		// Create a set of prohibited assignments for quick lookup
+		const prohibitedAssignments = new Set();
+		for (const [a, b] of prohibitedPairs) {
+			prohibitedAssignments.add(`${a}:${b}`);
+			prohibitedAssignments.add(`${b}:${a}`);
+		}
+
+		// Build a map of possible recipients for each Santa
+		const possibleRecipientsMap = {};
+		for (const santaId of userIds) {
+			possibleRecipientsMap[santaId] = userIds.filter((recipientId) => {
+				// Exclude self and prohibited pairs
+				if (recipientId === santaId) return false;
+				if (prohibitedAssignments.has(`${santaId}:${recipientId}`))
+					return false;
+				return true;
+			});
+		}
+
+		// Initialize assignments and assigned recipients
+		const assignments = {};
+		const assignedRecipients = new Set();
+
+		// Recursive function to assign Santas to recipients
+		function assign(santas, index) {
+			if (index === santas.length) {
+				// All Santas have been assigned
+				return true;
+			}
+
+			const santaId = santas[index];
+			const possibleRecipients = possibleRecipientsMap[santaId].filter(
+				(recipientId) => !assignedRecipients.has(recipientId)
+			);
+
+			for (const recipientId of possibleRecipients) {
+				assignments[santaId] = recipientId;
+				assignedRecipients.add(recipientId);
+
+				if (assign(santas, index + 1)) {
+					return true; // Found a valid assignment
+				}
+
+				// Backtrack if assignment is not valid
+				assignedRecipients.delete(recipientId);
+				delete assignments[santaId];
+			}
+
+			return false; // No valid assignment found
+		}
+
+		const santas = userIds;
+		const success = assign(santas, 0);
+
+		if (!success) {
+			console.error('Failed to find a valid assignment.');
+			bot.sendMessage(
+				parseInt(process.env.ADMIN_ID, 10),
+				'Failed to find a valid Secret Santa assignment due to constraints.',
+				mainMenuKeyboard
+			);
+			return;
+		}
+
+		// Clear previous assignments
+		await Assignment.deleteMany({});
+
+		// Save new assignments to the database
+		const assignmentArray = [];
+		for (const santaId of santas) {
+			const recipientId = assignments[santaId];
+			assignmentArray.push({ santaId, recipientId });
+		}
+
+		await Assignment.insertMany(assignmentArray);
+
+		// Notify each Santa of their recipient
+		for (const assignment of assignmentArray) {
+			const recipient = await User.findOne({
+				userId: assignment.recipientId,
+			});
+			const codeName = recipient.codeName;
+			bot.sendMessage(
+				assignment.santaId,
+				`You are the Secret Santa for ${codeName}. Use /view_wishlist to see their wish list.`,
+				mainMenuKeyboard
+			);
+		}
+	} catch (err) {
+		console.error(err);
+		bot.sendMessage(
+			parseInt(process.env.ADMIN_ID, 10),
+			'An error occurred during the Secret Santa assignment.',
+			mainMenuKeyboard
+		);
+	}
+}
 
 bot.onText(/\/initiate_draw/, async (msg) => {
 	const adminId = parseInt(process.env.ADMIN_ID, 10);
@@ -393,7 +582,8 @@ bot.onText(/\/initiate_draw/, async (msg) => {
 		return;
 	}
 
-	await assignSecretSantas();
+	// await assignSecretSantas();
+	await assignSecretSantasWithConstraints();
 	bot.sendMessage(
 		msg.chat.id,
 		'Secret Santa assignments have been made!',
@@ -414,7 +604,11 @@ bot.setMyCommands([
 		command: 'rewrite_wishlist',
 		description: 'Переписати список бажань заново.',
 	},
-	{ command: 'initiate_draw', description: 'Розпочати розподіл.' },
+	{ command: 'initiate_draw', description: 'Розпочати розподіл (адмін).' },
+	{
+		command: 'reassign_codenames',
+		description: 'Перепризначити кодові імена (адмін).',
+	},
 ]);
 
 bot.onText(/\/help/, (msg) => {
@@ -429,6 +623,7 @@ bot.onText(/\/help/, (msg) => {
   /initiate_draw - Розпочати розподіл.
   /my_wishlist - Глянути власний список.
   /rewrite_wishlist - Переписати список бажань заново.
+  /reassign_codenames - Перепризначити кодові імена (адмін).
   `;
 
 	bot.sendMessage(msg.chat.id, helpMessage, mainMenuKeyboard);
