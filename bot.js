@@ -658,6 +658,7 @@ async function remindToDrawWishlist() {
 	try {
 		const users = await User.find({});
 
+		const userIds = users.map((user) => user.userId);
 		// Массив повідомлень
 		const messages = [
 			'Здоров, друже. Ну шо, часу залишилось мало, а то тебе все ніяк не дожену. На носі свята, і прийшов час зіграти в таємного Санту. Так що давай без відмазок: пиши список бажань, інакше сам знаєш, хто до тебе першим прийде з «подарунками». Чекаю, не затягуй! 🎅🎒',
@@ -670,10 +671,12 @@ async function remindToDrawWishlist() {
 		];
 
 		// Notify each Santa
-		for (const user of users) {
+		for (const user of userIds) {
 			const randomMessage =
 				messages[Math.floor(Math.random() * messages.length)];
-			bot.sendMessage(user.santaId, randomMessage, mainMenuKeyboard);
+
+			console.log({ user, randomMessage });
+			bot.sendMessage(user, randomMessage, mainMenuKeyboard);
 		}
 	} catch (err) {
 		console.error(err);
