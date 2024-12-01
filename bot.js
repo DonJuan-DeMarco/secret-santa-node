@@ -778,7 +778,7 @@ async function remindEmptyToDrawWishlist() {
 		for (const user of users) {
 			console.log({ wishList: user.wishList });
 
-			if (user.wishList.trim() === '' || !user.wishList) {
+			if (!user.wishList || user.wishList.trim() === '') {
 				const randomMessage =
 					messages[Math.floor(Math.random() * messages.length)];
 
