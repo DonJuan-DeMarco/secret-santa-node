@@ -838,6 +838,7 @@ bot.setMyCommands([
 	},
 	{ command: 'initiate_draw', description: 'Розпочати розподіл (адмін).' },
 	{ command: 'remind_all', description: 'Нагадати всім (адмін).' },
+	{ command: 'remind_empty', description: 'Нагадати особливим (адмін).' },
 	{
 		command: 'reassign_codenames',
 		description: 'Перепризначити кодові імена (адмін).',
