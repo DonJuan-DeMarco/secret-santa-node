@@ -776,7 +776,9 @@ async function remindEmptyToDrawWishlist() {
 
 		// Notify each Santa
 		for (const user of users) {
-			if (user.wishList.trim().length === 0 || !user.wishList) {
+			console.log({ wishList: user.wishList });
+
+			if (user.wishList.trim() === '' || !user.wishList) {
 				const randomMessage =
 					messages[Math.floor(Math.random() * messages.length)];
 
