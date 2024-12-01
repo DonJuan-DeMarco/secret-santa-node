@@ -691,6 +691,41 @@ bot.onText(/\/remind_all/, async (msg) => {
 	}
 });
 
+bot.onText(/\/remind_empty/, async (msg) => {
+	const userId = msg.from.id;
+
+	const adminId = parseInt(process.env.ADMIN_ID, 10);
+
+	if (userId !== adminId) {
+		bot.sendMessage(
+			msg.chat.id,
+			'Only the admin can reassign code names.',
+			mainMenuKeyboard
+		);
+		return;
+	}
+
+	try {
+		const user = await User.findOne({ userId });
+
+		if (!user) {
+			bot.sendMessage(
+				msg.chat.id,
+				'You need to register first using /start.',
+				mainMenuKeyboard
+			);
+			return;
+		}
+		remindEmptyToDrawWishlist();
+	} catch (err) {
+		console.error(err);
+		bot.sendMessage(
+			msg.chat.id,
+			'An error occurred while reminding about wish lists.'
+		);
+	}
+});
+
 async function getNaughty() {
 	try {
 		const users = await User.find({});
@@ -700,12 +735,55 @@ async function getNaughty() {
 
 		// Notify each Santa
 
-		const count = users.filter(
-			(user) => user.wishList === '' || !user.wishList
-		).length;
+		const count = users
+			.filter((user) => user.wishList === '' || !user.wishList)
+			.length.toString();
 
 		console.log({ count });
 		return count;
+	} catch (err) {
+		console.error(err);
+	}
+}
+
+async function remindEmptyToDrawWishlist() {
+	try {
+		const users = await User.find({});
+
+		const userIds = users.map((user) => user.userId);
+		// Массив повідомлень
+		const messages = [
+			'Ну шо, списку немає? Тоді готуйся до сюрпризів, і не факт, що вони будуть приємні. У тебе п’ять хвилин, інакше я сам вирішу, що тобі треба!',
+			'Друже, свято близько, а твоя тиша мене починає нервувати. Швидко напиши, що хочеш, бо замість подарунків отримаєш великий-превеликий НІЧОГО!',
+			'Я ж попереджав: тягнеш час — отримаєш неприємності. Останнє попередження — список на стіл! Інакше Санта перетвориться на твій найгірший кошмар.',
+			'Ну шо, ще не наважився? Дивись, Новий рік не чекатиме, а я тим більше. Замість мішка подарунків прийде мішок проблем, тож не випробовуй долю.',
+			'Годі морозитися! Дай список бажань зараз, інакше прийду з подарунком на власний розсуд. Спойлер: він тобі не сподобається.',
+			'Слухай сюди, втаємничений: або ти зараз пишеш список, або Санта перетворюється на твою найгіршу різдвяну історію. Вибір за тобою.',
+			'Ну шо, ще граєш у мовчанку? Пиши список, поки я не вирішив, що тобі вистачить і коробки з піском замість подарунка.',
+			'Друже, Новий рік вже поруч, а твій список бажань десь у прірві. Останній шанс виправитися, бо Санта вже заряджає «подарункову канонаду».',
+			'Тягнеш час? Тоді чекай візиту. Але замість Санти прийде я з набором дуже оригінальних подарунків. Вибір за тобою.',
+			"Ну, брат, останнє слово за тобою. Список буде чи ні? Тільки врахуй, на 'ні' в мене свої плани.",
+			"Ти шо, взагалі страх втратив? Поки нормальні люди списки пишуть, ти морозишся. Давай, не тяни, бо Санта вже пакує дещо 'особливе'.",
+			"Слухай сюди, мрійник. Якщо не напишеш, чого хочеш, отримаєш те, чого точно не чекав. А я знаю, де роздобути пару 'сюрпризів'.",
+			'Ну шо, друже? Список бажань будеш писати чи чекатимеш різки під ялинку? Думай швидше, бо часу обмаль!',
+			"Давай-давай, не соромся! Список бажань Санті кидай, а то снігуронька вже на порозі зі своїми 'сюрпризами'.",
+			'Братуха, Новий рік на носі, а ти все сидиш? Не буде списку? Тоді чекатимеш мішок вугілля, замість подарунків!',
+			'Ну шо, вилізеш зі своєї ковдри чи ні? Список бажань, живо! Бо Санта вже на санях і не чекатиме довго.',
+			'Дивись, не жартуй із Сантою! Час чарів настав, а ти ще вагаєшся? Пиши список, бо залишишся без нічого.',
+			'Ей, зірочка, останнє попередження: список бажань на стіл! Інакше будеш милуватися ялинкою без подарунків.',
+			'Слухай сюди, мрійнику. Якщо не напишеш, що хочеш, отримаєш носок із мандаринкою. І це ще щасливий варіант!',
+		];
+
+		// Notify each Santa
+		for (const user of users) {
+			if (user.wishList.trim().length === 0 || !user.wishList) {
+				const randomMessage =
+					messages[Math.floor(Math.random() * messages.length)];
+
+				console.log({ userId: user.userId, randomMessage });
+				bot.sendMessage(user.userId, randomMessage, mainMenuKeyboard);
+			}
+		}
 	} catch (err) {
 		console.error(err);
 	}
