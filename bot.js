@@ -736,7 +736,7 @@ async function getNaughty() {
 		// Notify each Santa
 
 		const count = users
-			.filter((user) => user.wishList === '' || !user.wishList)
+			.filter((user) => !user.wishList || user.wishList === '')
 			.length.toString();
 
 		console.log({ count });
