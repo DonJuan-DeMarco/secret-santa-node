@@ -619,6 +619,43 @@ bot.onText(/\/initiate_draw/, async (msg) => {
 	);
 });
 
+bot.onText(/\/get_naughty/, async (msg) => {
+	const userId = msg.from.id;
+
+	const adminId = parseInt(process.env.ADMIN_ID, 10);
+
+	if (userId !== adminId) {
+		bot.sendMessage(
+			msg.chat.id,
+			'Only the admin can reassign code names.',
+			mainMenuKeyboard
+		);
+		return;
+	}
+
+	try {
+		const user = await User.findOne({ userId });
+
+		if (!user) {
+			bot.sendMessage(
+				msg.chat.id,
+				'You need to register first using /start.',
+				mainMenuKeyboard
+			);
+			return;
+		}
+		const count = getNaughty();
+
+		bot.sendMessage(msg.chat.id, count, mainMenuKeyboard);
+	} catch (err) {
+		console.error(err);
+		bot.sendMessage(
+			msg.chat.id,
+			'An error occurred while reminding about wish lists.'
+		);
+	}
+});
+
 bot.onText(/\/remind_all/, async (msg) => {
 	const userId = msg.from.id;
 
@@ -653,6 +690,26 @@ bot.onText(/\/remind_all/, async (msg) => {
 		);
 	}
 });
+
+async function getNaughty() {
+	try {
+		const users = await User.find({});
+
+		const userIds = users.map((user) => user.userId);
+		// Массив повідомлень
+
+		// Notify each Santa
+
+		const count = users.filter(
+			(user) => user.wishList === '' || !user.wishList
+		).length;
+
+		console.log({ count });
+		return count;
+	} catch (err) {
+		console.error(err);
+	}
+}
 
 async function remindToDrawWishlist() {
 	try {
