@@ -14,7 +14,7 @@ const mainMenuKeyboard = {
 			[{ text: '/wishlist' }, { text: '/rewrite_wishlist' }],
 			[{ text: '/my_wishlist' }, { text: '/view_wishlist' }],
 			[{ text: '/help' }, { text: '/initiate_draw' }],
-			[{ text: '/my_codename' }],
+			[{ text: '/my_codename' }, { text: '/remind' }],
 		],
 		resize_keyboard: true,
 		one_time_keyboard: false,
@@ -618,6 +618,58 @@ bot.onText(/\/initiate_draw/, async (msg) => {
 		mainMenuKeyboard
 	);
 });
+
+bot.onText(/\/remind/, async (msg) => {
+	const userId = msg.from.id;
+
+	const adminId = parseInt(process.env.ADMIN_ID, 10);
+
+	if (userId !== adminId) {
+		bot.sendMessage(
+			msg.chat.id,
+			'Only the admin can reassign code names.',
+			mainMenuKeyboard
+		);
+		return;
+	}
+
+	try {
+		const user = await User.findOne({ userId });
+
+		if (!user) {
+			bot.sendMessage(
+				msg.chat.id,
+				'You need to register first using /start.',
+				mainMenuKeyboard
+			);
+			return;
+		}
+		remindToDrawWishlist();
+	} catch (err) {
+		console.error(err);
+		bot.sendMessage(
+			msg.chat.id,
+			'An error occurred while reminding about wish lists.'
+		);
+	}
+});
+
+async function remindToDrawWishlist() {
+	try {
+		const users = await User.find({});
+
+		// Notify each Santa
+		for (const user of users) {
+			bot.sendMessage(
+				user.santaId,
+				`Здоров, друже. Ну шо, часу залишилось мало, а то тебе все ніяк не дожену. На носі свята, і прийшов час зіграти в таємного Санту. Так що давай без відмазок: пиши список бажань, інакше сам знаєш, хто до тебе першим прийде з «подарунками». Чекаю, не затягуй! 😏🎅`,
+				mainMenuKeyboard
+			);
+		}
+	} catch (err) {
+		console.error(err);
+	}
+}
 
 bot.setMyCommands([
 	{ command: 'start', description: 'Зареєструватися у грі.' },
