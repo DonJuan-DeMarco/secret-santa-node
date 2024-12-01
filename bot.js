@@ -751,6 +751,10 @@ bot.setMyCommands([
 	{ command: 'my_wishlist', description: 'Глянути власний список.' },
 	{ command: 'my_codename', description: "Глянути власне кодове ім'я." },
 	{
+		command: 'get_naughty',
+		description: 'Глянути кількість бідолаг.',
+	},
+	{
 		command: 'rewrite_wishlist',
 		description: 'Переписати список бажань заново.',
 	},
