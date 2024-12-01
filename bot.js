@@ -14,6 +14,7 @@ const mainMenuKeyboard = {
 			[{ text: '/wishlist' }, { text: '/rewrite_wishlist' }],
 			[{ text: '/my_wishlist' }, { text: '/view_wishlist' }],
 			[{ text: '/help' }, { text: '/initiate_draw' }],
+			[{ text: '/my_codename' }],
 		],
 		resize_keyboard: true,
 		one_time_keyboard: false,
@@ -124,6 +125,33 @@ bot.onText(/\/my_wishlist/, async (msg) => {
 		bot.sendMessage(
 			msg.chat.id,
 			'An error occurred while retrieving your wish list.'
+		);
+	}
+});
+
+bot.onText(/\/my_codename/, async (msg) => {
+	const userId = msg.from.id;
+
+	try {
+		const user = await User.findOne({ userId });
+
+		if (!user) {
+			bot.sendMessage(
+				msg.chat.id,
+				'You need to register first using /start.',
+				mainMenuKeyboard
+			);
+			return;
+		}
+
+		const username =
+			user.codeName || 'You have not been assigned a codename yet.';
+		bot.sendMessage(msg.chat.id, `Your Code Name:\n${username}`);
+	} catch (err) {
+		console.error(err);
+		bot.sendMessage(
+			msg.chat.id,
+			'An error occurred while retrieving your codename.'
 		);
 	}
 });
@@ -600,6 +628,7 @@ bot.setMyCommands([
 		description: 'Глянути список бажань рецепієнта (після розподілу).',
 	},
 	{ command: 'my_wishlist', description: 'Глянути власний список.' },
+	{ command: 'my_codename', description: "Глянути власне кодове ім'я." },
 	{
 		command: 'rewrite_wishlist',
 		description: 'Переписати список бажань заново.',
@@ -622,6 +651,7 @@ bot.onText(/\/help/, (msg) => {
   /help - Показати дане повідомлення.
   /initiate_draw - Розпочати розподіл.
   /my_wishlist - Глянути власний список.
+  /my_codename -  Глянути власне кодове ім'я.
   /rewrite_wishlist - Переписати список бажань заново.
   /reassign_codenames - Перепризначити кодові імена (адмін).
   `;
