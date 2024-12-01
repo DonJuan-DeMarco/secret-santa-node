@@ -644,7 +644,7 @@ bot.onText(/\/get_naughty/, async (msg) => {
 			);
 			return;
 		}
-		const count = getNaughty();
+		const count = await getNaughty();
 
 		bot.sendMessage(msg.chat.id, count, mainMenuKeyboard);
 	} catch (err) {
@@ -681,7 +681,7 @@ bot.onText(/\/remind_all/, async (msg) => {
 			);
 			return;
 		}
-		remindToDrawWishlist();
+		await remindToDrawWishlist();
 	} catch (err) {
 		console.error(err);
 		bot.sendMessage(
@@ -716,7 +716,7 @@ bot.onText(/\/remind_empty/, async (msg) => {
 			);
 			return;
 		}
-		remindEmptyToDrawWishlist();
+		await remindEmptyToDrawWishlist();
 	} catch (err) {
 		console.error(err);
 		bot.sendMessage(
